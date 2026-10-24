@@ -1,0 +1,49 @@
+## Waveshare ESP32-P4-ETH (ESP32-P4NRW32X: 32 MB flash, 32 MB hex PSRAM).
+CONFIG_IDF_TARGET="esp32p4"
+
+# Flash
+CONFIG_ESPTOOLPY_FLASHSIZE_32MB=y
+CONFIG_ESPTOOLPY_FLASHMODE_QIO=y
+CONFIG_ESPTOOLPY_FLASHFREQ_80M=y
+
+# Console: the Type-C is a WCH CH343P USB-UART bridge wired to UART0
+# (VID 1a86), NOT the native USB-Serial-JTAG - so use the UART0 console.
+CONFIG_ESP_CONSOLE_UART_DEFAULT=y
+
+# PSRAM: 32 MB stacked, hex bus. The Whistle blob + Needle 2 KV cache live
+# here; the Needle 2 weights stay memory-mapped in flash.
+CONFIG_SPIRAM=y
+CONFIG_SPIRAM_MODE_HEX=y
+CONFIG_SPIRAM_SPEED_200M=y
+CONFIG_SPIRAM_USE_MALLOC=y
+CONFIG_SPIRAM_MALLOC_ALWAYSINTERNAL=4096
+
+# Big L2 cache: the weight streams are PSRAM-read bound.
+CONFIG_CACHE_L2_CACHE_256KB=y
+CONFIG_CACHE_L2_CACHE_LINE_128B=y
+
+# Speed
+CONFIG_ESP_DEFAULT_CPU_FREQ_MHZ_360=y
+CONFIG_COMPILER_OPTIMIZATION_PERF=y
+
+# Board settings as the upstream sdkconfig.defaults (README, Troubleshooting).
+CONFIG_FREERTOS_HZ=1000
+CONFIG_ESP_MAIN_TASK_STACK_SIZE=10240
+CONFIG_ESP_TASK_WDT_EN=n
+CONFIG_BOOTLOADER_LOG_LEVEL_WARN=y
+
+# Whistle.cact is read from the SD card (long filenames), needle2.cact is
+# memory-mapped from the "needle2" flash partition below.
+CONFIG_PARTITION_TABLE_CUSTOM=y
+CONFIG_PARTITION_TABLE_CUSTOM_FILENAME="partitions.csv"
+
+# The needle2 partition sits at 0x410000..0x1210000, past the 16 MB a 24-bit
+# flash mapping covers; allow 32-bit addresses on quad flash so
+# esp_partition_mmap can map it. (Marked experimental by Espressif; the
+# onboard GigaDevice 32 MB chip works with it.)
+CONFIG_IDF_EXPERIMENTAL_FEATURES=y
+CONFIG_BOOTLOADER_CACHE_32BIT_ADDR_QUAD_FLASH=y
+
+# "whistle.cact" is not an 8.3 name - long filename support for FATFS.
+CONFIG_FATFS_LFN=y
+CONFIG_FATFS_LFN_HEAP=y

@@ -1,0 +1,5 @@
+dependencies:
+  idf:
+    version: ">=5.5"
+  espressif/es8311:
+    version: "^1.0.0"
