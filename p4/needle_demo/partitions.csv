@@ -1,0 +1,10 @@
+# name,    type, subtype,  offset,    size
+# whistle.cact (16.9 MB) lives on the SD card and is loaded into PSRAM at
+# boot - no partition for it. needle2.cact (13.7 MB) is memory-mapped in
+# place from the needle2 partition (custom data subtype 0x40), flashed once
+# with:
+#   esptool.py --chip esp32p4 -p PORT write_flash 0x410000 needle2.cact
+nvs,       data, nvs,      0x9000,    0x6000
+phy_init,  data, phy,      0xf000,    0x1000
+factory,   app,  factory,  0x10000,   0x400000
+needle2,   data, 0x40,     0x410000,  0xE00000
