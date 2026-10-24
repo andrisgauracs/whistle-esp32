@@ -358,8 +358,14 @@ static ND_HOT void lut2_rows(void *vc, uint32_t r0, uint32_t r1)
  * Stage each tensor's packed rows + norms into PSRAM on first use (they are
  * read-only afterwards). nd_parallel_rows runs us on both cores, so the
  * staging table is mutex-protected; copies happen during the boot prime.
+ *
+ * needle2 needs 5 lut2 gemv tensors per layer x 27 layers = 135 attention
+ * entries alone, plus 2-bit engram/mhc tables that arrive later in canon
+ * order; the 10.5 MB byte budget (not this count) is the real limiter, so
+ * keep MAX comfortably above the full tensor set to avoid silently
+ * de-staging the tail layers back to flash speed.
  * ------------------------------------------------------------------------ */
-#define ND_P4_STAGE_MAX    96
+#define ND_P4_STAGE_MAX    192
 #define ND_P4_STAGE_BUDGET (10u * 1024u * 1024u + 512u * 1024u)  /* 10.5 MB */
 
 typedef struct {

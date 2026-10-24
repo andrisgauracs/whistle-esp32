@@ -118,14 +118,18 @@ Use it either way:
   calls at half the tokens), a lone digit `2`..`8` still sets the Whistle
   decoder depth
 
-Measured on this board (typed requests, reasoning off), after both LLM
-optimizations below: bench **3.7 tok/s (269 ms/tok; the S3 did 1.87** -
-2x), prefill ~3.7 tok/s, a full request ~8 s. Two stages got there:
+Measured on this board (typed requests, reasoning off), after the LLM
+optimizations below: bench **4.5 tok/s (224 ms/tok; the S3 did 1.87** -
+2.4x), a full request ~7 s. Three stages got there:
 
 1. **PSRAM staging**: the 2-bit weights stream from flash mmap (~33 MB/s),
    which capped the LUT GEMV. Each tensor is copied to PSRAM on first use
-   (5.4 MB total, hidden in the boot prime; `EVT lut2 staged` lines).
-   2.45 -> 3.0 tok/s.
+   (hidden in the boot prime; `EVT lut2 staged` lines). 2.45 -> 3.0 tok/s.
+   The staging table was first capped at 96 entries, which only covered
+   layers 0-18 (5.4 MB); the 10.5 MB byte budget was never the limiter.
+   Raising the entry cap to cover all 139 lut2 tensors (7.8 MB) staged
+   every attention projection + the 2-bit engram tables: 3.83 -> 4.46
+   tok/s, proj2bit 127 -> 84 ms, engram 11 -> 4 ms.
 2. **PIE bit-plane kernel**: PIE has no gather, so the 2-bit LUT path is
    decomposed bilinearly (cb[lo+2hi] expands to 4 coefficients) and the
    three bit-plane sums (lo, 2*hi, lo*hi via `vcmp.eq.s8` masks) come out
@@ -197,10 +201,11 @@ models are up.
       bit-identical to C, kernel race 25x, boot self-check in both apps;
       spoken-verified: 4.8 s total for 3.6 s of speech (~2.9x end-to-end,
       ~2.4x faster than the S3)
-- [x] LLM speed: PSRAM staging + PIE bit-plane kernel for the 2-bit LUT
-      GEMV (`nd_cq_gemv_lut2`) - 2.45 -> 3.7 tok/s (~2x the S3), prime
-      40 -> 25 s, typed request ~8 s; verified with typed requests incl.
-      a CONF 0.9994 call; automatic fallback to the float path if either
-      self-check fails
-- [ ] optional: depth/gain experiments; more LLM speed (proj2bit is now
-      ~127 ms of 269 ms and increasingly PSRAM-bandwidth-bound)
+- [x] LLM speed: PSRAM staging (all 139 lut2 tensors, 7.8 MB) + PIE
+      bit-plane kernel for the 2-bit LUT GEMV (`nd_cq_gemv_lut2`) -
+      2.45 -> 4.46 tok/s (~2.4x the S3), prime 40 -> 25 s; verified with
+      typed requests incl. a CONF 0.9994 call; automatic fallback to the
+      float path if either self-check fails
+- [ ] optional: depth/gain experiments; more LLM speed (next targets:
+      staging for the 4-bit rows path - mhc_phi4 ~32 ms still reads flash
+      directly - and PSRAM bandwidth: proj2bit is ~84 ms of 224)
